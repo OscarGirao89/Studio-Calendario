@@ -4,30 +4,30 @@ export function LogoIcon(props: SVGProps<SVGSVGElement>) {
   return (
     <svg
       xmlns="http://www.w3.org/2000/svg"
-      viewBox="0 0 200 50"
+      viewBox="0 0 220 50" // Adjusted viewBox for potentially wider text
       fill="currentColor"
-      aria-label="FusionArte Logo"
+      aria-label="SucioStudio Logo"
       {...props}
     >
       <text
-        x="10"
+        x="10" // Adjusted x for "Sucio"
         y="35"
         fontFamily="Poppins, sans-serif"
         fontSize="30"
         fontWeight="bold"
         className="fill-primary"
       >
-        Fusion
+        Sucio
       </text>
       <text
-        x="105"
+        x="100" // Adjusted x for "Studio"
         y="35"
         fontFamily="Poppins, sans-serif"
         fontSize="30"
         fontWeight="bold"
         className="fill-accent"
       >
-        Arte
+        Studio
       </text>
     </svg>
   );
