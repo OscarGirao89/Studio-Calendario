@@ -65,7 +65,6 @@ export function BookingForm({ currentTeacher, onFormSubmit, bookingToEdit }: Boo
 
   const defaultValues: Partial<BookingFormValues> = {
     type: 'single',
-    teacher: currentTeacher, // Por defecto, el profesor que imparte es el usuario actual, pero es editable
     className: '',
     color: BOOKING_COLORS[0],
     startTime: '09:00',
@@ -82,7 +81,7 @@ export function BookingForm({ currentTeacher, onFormSubmit, bookingToEdit }: Boo
       const valuesToSet: Partial<BookingFormValues> = {
         id: bookingToEdit.id,
         type: bookingToEdit.type,
-        teacher: bookingToEdit.teacher, // El profesor que imparte la clase
+        teacher: bookingToEdit.teacher, 
         className: bookingToEdit.className,
         color: bookingToEdit.color,
         startTime: bookingToEdit.startTime,
@@ -97,10 +96,9 @@ export function BookingForm({ currentTeacher, onFormSubmit, bookingToEdit }: Boo
       }
       form.reset(valuesToSet);
     } else {
-      // Para nuevas reservas, el 'teacher' (quien imparte) por defecto es el currentTeacher (usuario actual)
       form.reset({...defaultValues, teacher: currentTeacher });
     }
-  }, [bookingToEdit, form, currentTeacher, defaultValues]);
+  }, [bookingToEdit, form, currentTeacher]);
 
 
   const bookingType = form.watch('type');
@@ -110,7 +108,7 @@ export function BookingForm({ currentTeacher, onFormSubmit, bookingToEdit }: Boo
     const submissionData = {
       type: values.type,
       className: values.className,
-      teacher: values.teacher, // El profesor que imparte, tomado del formulario
+      teacher: values.teacher, 
       startTime: values.startTime,
       endTime: values.endTime,
       color: values.color,
@@ -119,8 +117,6 @@ export function BookingForm({ currentTeacher, onFormSubmit, bookingToEdit }: Boo
     };
 
     if (isEditing && bookingToEdit && values.id) {
-      // Al actualizar, no cambiamos createdBy.
-      // El 'teacher' (quien imparte) sí se actualiza desde el formulario.
       // @ts-ignore
       const result = await updateBookingAction(values.id, submissionData);
       if (result.success) {
@@ -132,9 +128,6 @@ export function BookingForm({ currentTeacher, onFormSubmit, bookingToEdit }: Boo
       }
 
     } else {
-      // Al crear una nueva reserva:
-      // 'teacher' es quien imparte la clase (del formulario, por defecto currentTeacher)
-      // 'createdBy' es el usuario actual (currentTeacher del header)
       const bookingDataForAdd = {
         ...submissionData,
         createdBy: currentTeacher,
