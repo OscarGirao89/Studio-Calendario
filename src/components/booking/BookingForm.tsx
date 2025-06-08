@@ -16,15 +16,15 @@ import { CalendarIcon } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { format, parseISO } from 'date-fns';
 import { es } from 'date-fns/locale';
-import { TEACHERS, BOOKING_COLORS, DURATION_OPTIONS, DAYS_OF_WEEK, TIME_SLOTS } from '@/lib/constants';
-import type { Teacher, BookingType, BookingColor, DayOfWeek, DurationOption, Booking, SingleBooking, RecurringBooking } from '@/lib/types';
+import { BOOKING_COLORS, DURATION_OPTIONS, DAYS_OF_WEEK, TIME_SLOTS } from '@/lib/constants';
+import type { Teacher as SystemUser, BookingType, BookingColor, DayOfWeek, DurationOption, Booking, SingleBooking, RecurringBooking } from '@/lib/types';
 import { useToast } from '@/hooks/use-toast';
 import { addBookingAction, updateBookingAction } from '@/lib/actions';
 
 const bookingFormSchema = z.object({
   id: z.string().optional(), // For identifying booking to update
   type: z.enum(['single', 'recurring'] as [BookingType, ...BookingType[]]),
-  teacher: z.enum(TEACHERS as [Teacher, ...Teacher[]]), // Profesor que imparte la clase
+  teacher: z.string().min(1, 'Nombre del profesor es requerido'), // Profesor que imparte la clase - now a string
   className: z.string().min(1, 'Nombre de la clase es requerido'),
   color: z.enum(BOOKING_COLORS as [BookingColor, ...BookingColor[]]),
   startTime: z.string().min(1, "Hora de inicio es requerida"),
@@ -55,7 +55,7 @@ const bookingFormSchema = z.object({
 type BookingFormValues = z.infer<typeof bookingFormSchema>;
 
 interface BookingFormProps {
-  currentTeacher: Teacher; // Este es el "Usuario" actual del header, quien crea la reserva
+  currentTeacher: SystemUser; // Este es el "Usuario" actual del header, quien crea la reserva
   onFormSubmit: () => void;
   bookingToEdit?: Booking | null;
 }
@@ -65,6 +65,7 @@ export function BookingForm({ currentTeacher, onFormSubmit, bookingToEdit }: Boo
 
   const defaultValues: Partial<BookingFormValues> = {
     type: 'single',
+    teacher: currentTeacher, // Default to the logged-in user, but can be overridden
     className: '',
     color: BOOKING_COLORS[0],
     startTime: '09:00',
@@ -108,7 +109,7 @@ export function BookingForm({ currentTeacher, onFormSubmit, bookingToEdit }: Boo
     const submissionData = {
       type: values.type,
       className: values.className,
-      teacher: values.teacher, 
+      teacher: values.teacher, // This now comes from the input field
       startTime: values.startTime,
       endTime: values.endTime,
       color: values.color,
@@ -117,7 +118,6 @@ export function BookingForm({ currentTeacher, onFormSubmit, bookingToEdit }: Boo
     };
 
     if (isEditing && bookingToEdit && values.id) {
-      // @ts-ignore
       const result = await updateBookingAction(values.id, submissionData);
       if (result.success) {
         toast({ title: 'Reserva Actualizada', description: `Clase "${result.booking?.className}" actualizada.` });
@@ -133,7 +133,6 @@ export function BookingForm({ currentTeacher, onFormSubmit, bookingToEdit }: Boo
         createdBy: currentTeacher,
       };
       
-      // @ts-ignore
       const result = await addBookingAction(bookingDataForAdd);
 
       if (result.success) {
@@ -175,17 +174,7 @@ export function BookingForm({ currentTeacher, onFormSubmit, bookingToEdit }: Boo
       
       <div>
         <Label htmlFor="teacher">Profesor que imparte</Label>
-        <Select
-          value={form.watch('teacher')}
-          onValueChange={(value) => form.setValue('teacher', value as Teacher, { shouldValidate: true })}
-        >
-          <SelectTrigger id="teacher">
-            <SelectValue placeholder="Seleccionar profesor" />
-          </SelectTrigger>
-          <SelectContent>
-            {TEACHERS.map(t => <SelectItem key={t} value={t}>{t}</SelectItem>)}
-          </SelectContent>
-        </Select>
+        <Input id="teacher" {...form.register('teacher')} />
         {form.formState.errors.teacher && <p className="text-sm text-destructive">{form.formState.errors.teacher.message}</p>}
       </div>
 
