@@ -3,7 +3,7 @@
 
 import React, { useState, useEffect, useMemo } from 'react';
 import { Button } from '@/components/ui/button';
-import { ChevronLeft, ChevronRight, Calendar as CalendarIconLucide } from 'lucide-react'; // Renamed to avoid conflict
+import { ChevronLeft, ChevronRight, Calendar as CalendarIconLucide } from 'lucide-react';
 import { getWeekDateRange, getDaysInWeek, navigateWeek, formatDayMonth, formatDate, parseTimeString } from '@/lib/date-utils';
 import { TIME_SLOTS, DAYS_OF_WEEK } from '@/lib/constants';
 import type { Booking, Teacher, SingleBooking, RecurringBooking } from '@/lib/types';
@@ -31,9 +31,17 @@ interface WeeklyCalendarProps {
   bookingsLastUpdatedAt: number;
   currentTeacher: Teacher;
   onBookingUpdated: () => void;
+  onEditBookingRequested: (booking: Booking) => void;
 }
 
-export function WeeklyCalendar({ initialDate = new Date(), debugMode, bookingsLastUpdatedAt, currentTeacher, onBookingUpdated }: WeeklyCalendarProps) {
+export function WeeklyCalendar({ 
+  initialDate = new Date(), 
+  debugMode, 
+  bookingsLastUpdatedAt, 
+  currentTeacher, 
+  onBookingUpdated,
+  onEditBookingRequested 
+}: WeeklyCalendarProps) {
   const [currentDate, setCurrentDate] = useState(initialDate);
   const [weekBookings, setWeekBookings] = useState<Booking[]>([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -109,9 +117,9 @@ export function WeeklyCalendar({ initialDate = new Date(), debugMode, bookingsLa
     const result = await deleteBookingAction(bookingToDelete.id);
     if (result.success) {
       toast({ title: "Reserva Eliminada", description: `La clase "${bookingToDelete.className}" ha sido eliminada.` });
-      onBookingUpdated(); // This will trigger bookingsLastUpdatedAt change and re-fetch
+      onBookingUpdated(); 
     } else {
-      toast({ variant: "destructive", title: "Error", description: "No se pudo eliminar la reserva." });
+      toast({ variant: "destructive", title: "Error", description: result.message || "No se pudo eliminar la reserva." });
     }
     setBookingToDelete(null);
   };
@@ -186,7 +194,7 @@ export function WeeklyCalendar({ initialDate = new Date(), debugMode, bookingsLa
                             booking={booking} 
                             currentTeacher={currentTeacher}
                             onRequestDelete={handleRequestDelete}
-                            // Add onRequestEdit later
+                            onRequestEdit={onEditBookingRequested}
                           />
                         </div>
                       );
@@ -216,3 +224,4 @@ export function WeeklyCalendar({ initialDate = new Date(), debugMode, bookingsLa
     </div>
   );
 }
+

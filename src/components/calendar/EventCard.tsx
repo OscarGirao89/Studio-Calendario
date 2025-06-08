@@ -2,17 +2,17 @@
 import type { Booking, Teacher } from '@/lib/types';
 import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
-import { Trash2, Edit3 } from 'lucide-react'; // Assuming Edit3 for edit icon
+import { Trash2, Edit3 } from 'lucide-react';
 
 interface EventCardProps {
   booking: Booking;
   currentTeacher: Teacher;
   onRequestDelete: (booking: Booking) => void;
-  // onRequestEdit: (booking: Booking) => void; // Add later for edit functionality
+  onRequestEdit: (booking: Booking) => void;
   onClick?: () => void; 
 }
 
-export function EventCard({ booking, currentTeacher, onRequestDelete, /* onRequestEdit, */ onClick }: EventCardProps) {
+export function EventCard({ booking, currentTeacher, onRequestDelete, onRequestEdit, onClick }: EventCardProps) {
   const cardStyle = {
     backgroundColor: booking.color,
     opacity: booking.type === 'single' ? 0.9 : 1,
@@ -25,7 +25,7 @@ export function EventCard({ booking, currentTeacher, onRequestDelete, /* onReque
       className={cn(
         "p-2 rounded-md text-xs text-primary-foreground shadow-md overflow-hidden h-full flex flex-col justify-between group",
         booking.type === 'recurring' && "recurring-event-stripes",
-        canModify ? "cursor-default" : "cursor-pointer" // Pointer only if not modifiable and onClick is present
+        canModify || onClick ? "cursor-pointer" : "cursor-default" 
       )}
       style={cardStyle}
       onClick={!canModify && onClick ? onClick : undefined}
@@ -39,7 +39,7 @@ export function EventCard({ booking, currentTeacher, onRequestDelete, /* onReque
         <p className="text-[10px] opacity-80 truncate flex-shrink mr-1">Por: {booking.createdBy}</p>
         {canModify && (
           <div className="flex space-x-1 opacity-0 group-hover:opacity-100 transition-opacity duration-150 flex-shrink-0">
-            {/* <Button
+            <Button
               variant="ghost"
               size="icon"
               className="h-5 w-5 p-0 text-primary-foreground hover:bg-black/20"
@@ -47,7 +47,7 @@ export function EventCard({ booking, currentTeacher, onRequestDelete, /* onReque
               title="Editar Reserva"
             >
               <Edit3 className="h-3 w-3" />
-            </Button> */}
+            </Button>
             <Button
               variant="ghost"
               size="icon"
@@ -63,3 +63,4 @@ export function EventCard({ booking, currentTeacher, onRequestDelete, /* onReque
     </div>
   );
 }
+

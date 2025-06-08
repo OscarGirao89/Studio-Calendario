@@ -1,6 +1,7 @@
+
 'use client';
 
-import React from 'react';
+import React, { useEffect } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
@@ -16,9 +17,9 @@ import { cn } from '@/lib/utils';
 import { format, parseISO } from 'date-fns';
 import { es } from 'date-fns/locale';
 import { TEACHERS, BOOKING_COLORS, DURATION_OPTIONS, DAYS_OF_WEEK, TIME_SLOTS } from '@/lib/constants';
-import type { Teacher, BookingType, BookingColor, DayOfWeek, DurationOption, Booking } from '@/lib/types';
+import type { Teacher, BookingType, BookingColor, DayOfWeek, DurationOption, Booking, SingleBooking, RecurringBooking } from '@/lib/types';
 import { useToast } from '@/hooks/use-toast';
-import { addBookingAction } from '@/lib/actions';
+import { addBookingAction } from '@/lib/actions'; // updateBookingAction will be added later
 
 const bookingFormSchema = z.object({
   type: z.enum(['single', 'recurring'] as [BookingType, ...BookingType[]]),
@@ -27,9 +28,10 @@ const bookingFormSchema = z.object({
   color: z.enum(BOOKING_COLORS as [BookingColor, ...BookingColor[]]),
   startTime: z.string().min(1, "Hora de inicio es requerida"),
   endTime: z.string().min(1, "Hora de fin es requerida"),
-  date: z.date().optional(), // For single bookings
-  dayOfWeek: z.enum(DAYS_OF_WEEK as [DayOfWeek, ...DayOfWeek[]]).optional(), // For recurring bookings
-  duration: z.enum(DURATION_OPTIONS as [DurationOption, ...DurationOption[]]).optional(), // For recurring bookings
+  date: z.date().optional(), 
+  dayOfWeek: z.enum(DAYS_OF_WEEK as [DayOfWeek, ...DayOfWeek[]]).optional(), 
+  duration: z.enum(DURATION_OPTIONS as [DurationOption, ...DurationOption[]]).optional(), 
+  id: z.string().optional(), // For identifying booking to update
 }).refine(data => {
   if (data.type === 'single' && !data.date) {
     return false;
@@ -43,7 +45,6 @@ const bookingFormSchema = z.object({
   return true;
 }, { message: 'Día y duración son requeridos para clase fija', path: ['dayOfWeek'] })
 .refine(data => {
-  // Validate start time is before end time
   if (data.startTime && data.endTime) {
     return data.startTime < data.endTime;
   }
@@ -56,53 +57,95 @@ type BookingFormValues = z.infer<typeof bookingFormSchema>;
 interface BookingFormProps {
   currentTeacher: Teacher;
   debugMode: boolean;
-  onFormSubmit: () => void; // To close modal or refresh
+  onFormSubmit: () => void; 
+  bookingToEdit?: Booking | null;
 }
 
-export function BookingForm({ currentTeacher, debugMode, onFormSubmit }: BookingFormProps) {
+export function BookingForm({ currentTeacher, debugMode, onFormSubmit, bookingToEdit }: BookingFormProps) {
   const { toast } = useToast();
+  
+  const defaultValues: Partial<BookingFormValues> = {
+    type: 'single',
+    teacher: currentTeacher,
+    className: '',
+    color: BOOKING_COLORS[0],
+    startTime: '09:00',
+    endTime: '10:00',
+  };
+
   const form = useForm<BookingFormValues>({
     resolver: zodResolver(bookingFormSchema),
-    defaultValues: {
-      type: 'single',
-      teacher: currentTeacher,
-      className: '',
-      color: BOOKING_COLORS[0],
-      startTime: '09:00',
-      endTime: '10:00',
-    },
+    defaultValues: defaultValues,
   });
 
+  useEffect(() => {
+    if (bookingToEdit) {
+      if (debugMode) console.log('Editing booking:', bookingToEdit);
+      const valuesToSet: Partial<BookingFormValues> = {
+        id: bookingToEdit.id,
+        type: bookingToEdit.type,
+        teacher: bookingToEdit.teacher,
+        className: bookingToEdit.className,
+        color: bookingToEdit.color,
+        startTime: bookingToEdit.startTime,
+        endTime: bookingToEdit.endTime,
+      };
+      if (bookingToEdit.type === 'single') {
+        valuesToSet.date = parseISO((bookingToEdit as SingleBooking).date);
+      } else {
+        const recurring = bookingToEdit as RecurringBooking;
+        valuesToSet.dayOfWeek = recurring.dayOfWeek;
+        valuesToSet.duration = recurring.duration;
+      }
+      form.reset(valuesToSet);
+    } else {
+      form.reset(defaultValues); // Reset to defaults if not editing
+    }
+  }, [bookingToEdit, form, debugMode, currentTeacher]);
+
   const bookingType = form.watch('type');
+  const isEditing = !!bookingToEdit;
 
   async function onSubmit(values: BookingFormValues) {
     if (debugMode) console.log('Form values:', values);
 
-    const bookingData = {
-      type: values.type,
-      className: values.className,
-      teacher: values.teacher,
-      createdBy: currentTeacher, // The user currently "booking as"
-      startTime: values.startTime,
-      endTime: values.endTime,
-      color: values.color,
-      ...(values.type === 'single' && values.date && { date: format(values.date, 'yyyy-MM-dd') }),
-      ...(values.type === 'recurring' && { dayOfWeek: values.dayOfWeek, duration: values.duration }),
-    };
-    
-    if (debugMode) console.log('Attempting to add booking:', bookingData);
-    
-    // @ts-ignore // TODO: Fix type mismatch for action
-    const result = await addBookingAction(bookingData);
+    if (isEditing && bookingToEdit) {
+      // Call updateBookingAction - To be implemented
+      if (debugMode) console.log('Attempting to update booking:', { ...bookingToEdit, ...values });
+      // const result = await updateBookingAction(bookingToEdit.id, values);
+      // For now, simulate success for UI flow
+      toast({ title: 'Reserva Actualizada (Simulado)', description: `Clase "${values.className}" actualizada.` });
+      onFormSubmit();
+      form.reset(defaultValues);
 
-    if (debugMode) console.log('Booking action result:', result);
-
-    if (result.success) {
-      toast({ title: 'Reserva Creada', description: `Clase "${result.booking?.className}" agendada.` });
-      onFormSubmit(); // Close modal, refresh calendar
-      form.reset();
     } else {
-      toast({ variant: 'destructive', title: 'Error al Crear Reserva', description: result.message });
+      // Add new booking
+      const bookingData = {
+        type: values.type,
+        className: values.className,
+        teacher: values.teacher,
+        createdBy: currentTeacher, 
+        startTime: values.startTime,
+        endTime: values.endTime,
+        color: values.color,
+        ...(values.type === 'single' && values.date && { date: format(values.date, 'yyyy-MM-dd') }),
+        ...(values.type === 'recurring' && { dayOfWeek: values.dayOfWeek, duration: values.duration }),
+      };
+      
+      if (debugMode) console.log('Attempting to add booking:', bookingData);
+      
+      // @ts-ignore 
+      const result = await addBookingAction(bookingData);
+
+      if (debugMode) console.log('Booking action result:', result);
+
+      if (result.success) {
+        toast({ title: 'Reserva Creada', description: `Clase "${result.booking?.className}" agendada.` });
+        onFormSubmit(); 
+        form.reset(defaultValues);
+      } else {
+        toast({ variant: 'destructive', title: 'Error al Crear Reserva', description: result.message });
+      }
     }
   }
 
@@ -111,25 +154,30 @@ export function BookingForm({ currentTeacher, debugMode, onFormSubmit }: Booking
       <div className="space-y-2">
         <Label>Tipo de Reserva</Label>
         <RadioGroup
-          defaultValue="single"
-          onValueChange={(value) => form.setValue('type', value as BookingType)}
+          value={form.watch('type')} // Controlled component
+          onValueChange={(value) => form.setValue('type', value as BookingType, { shouldValidate: true })}
           className="flex space-x-4"
         >
           <div className="flex items-center space-x-2">
-            <RadioGroupItem value="single" id="type-single" />
+            <RadioGroupItem value="single" id="type-single" disabled={isEditing}/>
             <Label htmlFor="type-single">Única</Label>
           </div>
           <div className="flex items-center space-x-2">
-            <RadioGroupItem value="recurring" id="type-recurring" />
+            <RadioGroupItem value="recurring" id="type-recurring" disabled={isEditing}/>
             <Label htmlFor="type-recurring">Clase Fija</Label>
           </div>
         </RadioGroup>
+         {isEditing && <p className="text-xs text-muted-foreground">El tipo de reserva no se puede cambiar al editar.</p>}
       </div>
 
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
         <div>
           <Label htmlFor="teacher">Profesor que imparte</Label>
-          <Select onValueChange={(value) => form.setValue('teacher', value as Teacher)} defaultValue={currentTeacher}>
+          <Select 
+            value={form.watch('teacher')}
+            onValueChange={(value) => form.setValue('teacher', value as Teacher)} 
+            defaultValue={currentTeacher}
+          >
             <SelectTrigger id="teacher">
               <SelectValue placeholder="Seleccionar profesor" />
             </SelectTrigger>
@@ -180,7 +228,10 @@ export function BookingForm({ currentTeacher, debugMode, onFormSubmit }: Booking
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
           <div>
             <Label htmlFor="dayOfWeek">Día de la semana</Label>
-            <Select onValueChange={(value) => form.setValue('dayOfWeek', value as DayOfWeek)}>
+            <Select 
+              value={form.watch('dayOfWeek')}
+              onValueChange={(value) => form.setValue('dayOfWeek', value as DayOfWeek)}
+            >
               <SelectTrigger id="dayOfWeek">
                 <SelectValue placeholder="Seleccionar día" />
               </SelectTrigger>
@@ -192,7 +243,10 @@ export function BookingForm({ currentTeacher, debugMode, onFormSubmit }: Booking
           </div>
           <div>
             <Label htmlFor="duration">Duración</Label>
-            <Select onValueChange={(value) => form.setValue('duration', value as DurationOption)}>
+            <Select 
+              value={form.watch('duration')}
+              onValueChange={(value) => form.setValue('duration', value as DurationOption)}
+            >
               <SelectTrigger id="duration">
                 <SelectValue placeholder="Seleccionar duración" />
               </SelectTrigger>
@@ -208,7 +262,10 @@ export function BookingForm({ currentTeacher, debugMode, onFormSubmit }: Booking
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
         <div>
           <Label htmlFor="startTime">Hora de Inicio</Label>
-          <Select onValueChange={(value) => form.setValue('startTime', value)} defaultValue="09:00">
+          <Select 
+            value={form.watch('startTime')}
+            onValueChange={(value) => form.setValue('startTime', value)} 
+          >
             <SelectTrigger id="startTime">
               <SelectValue placeholder="Seleccionar hora" />
             </SelectTrigger>
@@ -220,7 +277,10 @@ export function BookingForm({ currentTeacher, debugMode, onFormSubmit }: Booking
         </div>
         <div>
           <Label htmlFor="endTime">Hora de Fin</Label>
-          <Select onValueChange={(value) => form.setValue('endTime', value)} defaultValue="10:00">
+          <Select 
+            value={form.watch('endTime')}
+            onValueChange={(value) => form.setValue('endTime', value)}
+          >
             <SelectTrigger id="endTime">
               <SelectValue placeholder="Seleccionar hora" />
             </SelectTrigger>
@@ -235,7 +295,7 @@ export function BookingForm({ currentTeacher, debugMode, onFormSubmit }: Booking
       <div>
         <Label>Selector de Color</Label>
         <RadioGroup 
-          defaultValue={BOOKING_COLORS[0]}
+          value={form.watch('color')}
           onValueChange={(value) => form.setValue('color', value as BookingColor)}
           className="flex flex-wrap gap-2 pt-2"
         >
@@ -255,8 +315,9 @@ export function BookingForm({ currentTeacher, debugMode, onFormSubmit }: Booking
       </div>
 
       <Button type="submit" className="w-full" disabled={form.formState.isSubmitting}>
-        {form.formState.isSubmitting ? 'Guardando...' : 'Guardar Reserva'}
+        {form.formState.isSubmitting ? 'Guardando...' : (isEditing ? 'Actualizar Reserva' : 'Guardar Reserva')}
       </Button>
     </form>
   );
 }
+

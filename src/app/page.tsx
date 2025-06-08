@@ -6,13 +6,14 @@ import { Header } from '@/components/layout/Header';
 import { WeeklyCalendar } from '@/components/calendar/WeeklyCalendar';
 import { MonthlySummary } from '@/components/summary/MonthlySummary';
 import { BookingModal } from '@/components/booking/BookingModal';
-import type { Teacher } from '@/lib/types';
+import type { Teacher, Booking } from '@/lib/types';
 import { TEACHERS } from '@/lib/constants'; // To get a default teacher
 
 export default function FusionSchedulePage() {
   const [currentTeacher, setCurrentTeacher] = useState<Teacher>(TEACHERS[0]);
   const [debugMode, setDebugMode] = useState<boolean>(false);
-  const [isModalOpen, setIsModalOpen] = useState<boolean>(false);
+  const [isBookingModalOpen, setIsBookingModalOpen] = useState<boolean>(false);
+  const [editingBooking, setEditingBooking] = useState<Booking | null>(null);
   const [currentCalendarDate, setCurrentCalendarDate] = useState(new Date());
   const [bookingsLastUpdatedAt, setBookingsLastUpdatedAt] = useState<number>(Date.now());
 
@@ -29,12 +30,19 @@ export default function FusionSchedulePage() {
   };
 
   const handleNewBooking = () => {
-    setIsModalOpen(true);
+    setEditingBooking(null); // Ensure we are not editing
+    setIsBookingModalOpen(true);
+  };
+
+  const handleEditBookingRequested = (booking: Booking) => {
+    setEditingBooking(booking);
+    setIsBookingModalOpen(true);
   };
   
   const handleModalOpenChange = (open: boolean) => {
-    setIsModalOpen(open);
+    setIsBookingModalOpen(open);
     if (!open) {
+      setEditingBooking(null); // Clear editing booking when modal closes
       // When modal closes, typically after a booking, refresh bookings
       setBookingsLastUpdatedAt(Date.now());
     }
@@ -66,6 +74,7 @@ export default function FusionSchedulePage() {
           bookingsLastUpdatedAt={bookingsLastUpdatedAt}
           currentTeacher={currentTeacher}
           onBookingUpdated={refreshBookings}
+          onEditBookingRequested={handleEditBookingRequested}
         />
         <MonthlySummary 
           currentDate={currentCalendarDate} 
@@ -74,11 +83,13 @@ export default function FusionSchedulePage() {
         />
       </main>
       <BookingModal
-        isOpen={isModalOpen}
+        isOpen={isBookingModalOpen}
         onOpenChange={handleModalOpenChange}
         currentTeacher={currentTeacher}
         debugMode={debugMode}
+        bookingToEdit={editingBooking}
       />
     </div>
   );
 }
+
