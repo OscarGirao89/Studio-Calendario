@@ -24,7 +24,7 @@ import { addBookingAction, updateBookingAction } from '@/lib/actions';
 const bookingFormSchema = z.object({
   id: z.string().optional(), // For identifying booking to update
   type: z.enum(['single', 'recurring'] as [BookingType, ...BookingType[]]),
-  teacher: z.enum(TEACHERS as [Teacher, ...Teacher[]]),
+  teacher: z.enum(TEACHERS as [Teacher, ...Teacher[]]), // This will be set automatically
   className: z.string().min(1, 'Nombre de la clase es requerido'),
   color: z.enum(BOOKING_COLORS as [BookingColor, ...BookingColor[]]),
   startTime: z.string().min(1, "Hora de inicio es requerida"),
@@ -65,7 +65,7 @@ export function BookingForm({ currentTeacher, onFormSubmit, bookingToEdit }: Boo
   
   const defaultValues: Partial<BookingFormValues> = {
     type: 'single',
-    teacher: currentTeacher,
+    teacher: currentTeacher, // Set teacher to currentTeacher by default
     className: '',
     color: BOOKING_COLORS[0],
     startTime: '09:00',
@@ -82,7 +82,7 @@ export function BookingForm({ currentTeacher, onFormSubmit, bookingToEdit }: Boo
       const valuesToSet: Partial<BookingFormValues> = {
         id: bookingToEdit.id,
         type: bookingToEdit.type,
-        teacher: bookingToEdit.teacher,
+        teacher: bookingToEdit.teacher, // Keep original teacher on edit, could be changed to bookingToEdit.createdBy if rule is strict
         className: bookingToEdit.className,
         color: bookingToEdit.color,
         startTime: bookingToEdit.startTime,
@@ -106,10 +106,14 @@ export function BookingForm({ currentTeacher, onFormSubmit, bookingToEdit }: Boo
   const isEditing = !!bookingToEdit;
 
   async function onSubmit(values: BookingFormValues) {
+    // Ensure teacher is currentTeacher for new bookings, or the booking's original teacher for edits.
+    // The form state for 'teacher' should already reflect this due to useEffect.
+    const teacherForSubmission = isEditing && bookingToEdit ? bookingToEdit.teacher : currentTeacher;
+
     const submissionData = {
       type: values.type,
       className: values.className,
-      teacher: values.teacher,
+      teacher: teacherForSubmission, // Use determined teacher
       startTime: values.startTime,
       endTime: values.endTime,
       color: values.color,
@@ -131,6 +135,7 @@ export function BookingForm({ currentTeacher, onFormSubmit, bookingToEdit }: Boo
     } else {
       const bookingDataForAdd = {
         ...submissionData,
+        teacher: currentTeacher, // Explicitly set teacher to currentTeacher for new bookings
         createdBy: currentTeacher, 
       };
       
@@ -148,10 +153,15 @@ export function BookingForm({ currentTeacher, onFormSubmit, bookingToEdit }: Boo
   }
 
   useEffect(() => {
+    // Ensure teacher field is always currentTeacher if not editing
+    // or if editing, it's pre-filled from bookingToEdit.teacher
     if (!isEditing) {
       form.setValue('teacher', currentTeacher);
     }
-  }, [currentTeacher, isEditing, form]);
+    // For editing, teacher is set in the main useEffect by bookingToEdit.teacher
+    // If strict rule "teacher must be creator" is needed even for edit:
+    // if (isEditing && bookingToEdit) form.setValue('teacher', bookingToEdit.createdBy);
+  }, [currentTeacher, isEditing, form, bookingToEdit]);
 
 
   return (
@@ -175,28 +185,13 @@ export function BookingForm({ currentTeacher, onFormSubmit, bookingToEdit }: Boo
          {isEditing && <p className="text-xs text-muted-foreground">El tipo de reserva no se puede cambiar al editar.</p>}
       </div>
 
-      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-        <div>
-          <Label htmlFor="teacher">Profesor que imparte</Label>
-          <Select 
-            value={form.watch('teacher')}
-            onValueChange={(value) => form.setValue('teacher', value as Teacher)} 
-          >
-            <SelectTrigger id="teacher">
-              <SelectValue placeholder="Seleccionar profesor" />
-            </SelectTrigger>
-            <SelectContent>
-              {TEACHERS.map(t => <SelectItem key={t} value={t}>{t}</SelectItem>)}
-            </SelectContent>
-          </Select>
-          {form.formState.errors.teacher && <p className="text-sm text-destructive">{form.formState.errors.teacher.message}</p>}
-        </div>
-        <div>
-          <Label htmlFor="className">Nombre de la Clase</Label>
-          <Input id="className" {...form.register('className')} />
-          {form.formState.errors.className && <p className="text-sm text-destructive">{form.formState.errors.className.message}</p>}
-        </div>
+      {/* Teacher select removed - it's automatic now */}
+      <div>
+        <Label htmlFor="className">Nombre de la Clase</Label>
+        <Input id="className" {...form.register('className')} />
+        {form.formState.errors.className && <p className="text-sm text-destructive">{form.formState.errors.className.message}</p>}
       </div>
+
 
       {bookingType === 'single' && (
         <div>
@@ -324,3 +319,5 @@ export function BookingForm({ currentTeacher, onFormSubmit, bookingToEdit }: Boo
     </form>
   );
 }
+
+    
