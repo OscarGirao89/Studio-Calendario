@@ -1,3 +1,4 @@
+
 'use client'; // Top-level page needs to be client for state management hooks
 
 import React, { useState, useEffect } from 'react';
@@ -39,6 +40,10 @@ export default function FusionSchedulePage() {
     }
   };
 
+  const refreshBookings = () => {
+    setBookingsLastUpdatedAt(Date.now());
+  }
+
 
   useEffect(() => {
     // This effect could be used to listen to real-time updates if using Firebase
@@ -59,6 +64,8 @@ export default function FusionSchedulePage() {
           initialDate={currentCalendarDate} 
           debugMode={debugMode}
           bookingsLastUpdatedAt={bookingsLastUpdatedAt}
+          currentTeacher={currentTeacher}
+          onBookingUpdated={refreshBookings}
         />
         <MonthlySummary 
           currentDate={currentCalendarDate} 
