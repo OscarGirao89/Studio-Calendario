@@ -1,3 +1,4 @@
+
 'use client';
 
 import type { ChangeEvent } from 'react';
@@ -5,7 +6,6 @@ import React from 'react';
 import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Switch } from '@/components/ui/switch';
 import { LogoIcon } from '@/components/icons/LogoIcon';
 import { TEACHERS } from '@/lib/constants';
 import type { Teacher } from '@/lib/types';
@@ -14,16 +14,12 @@ import { PlusCircle } from 'lucide-react';
 interface HeaderProps {
   currentTeacher: Teacher;
   onTeacherChange: (teacher: Teacher) => void;
-  debugMode: boolean;
-  onDebugModeChange: (enabled: boolean) => void;
   onNewBooking: () => void;
 }
 
 export function Header({
   currentTeacher,
   onTeacherChange,
-  debugMode,
-  onDebugModeChange,
   onNewBooking,
 }: HeaderProps) {
   return (
@@ -34,7 +30,7 @@ export function Header({
       </div>
       <div className="flex flex-col sm:flex-row items-center space-y-2 sm:space-y-0 sm:space-x-4">
         <div className="flex items-center space-x-2">
-          <Label htmlFor="teacher-select" className="text-sm">Reservando como:</Label>
+          <Label htmlFor="teacher-select" className="text-sm">Usuario:</Label>
           <Select value={currentTeacher} onValueChange={onTeacherChange}>
             <SelectTrigger id="teacher-select" className="w-[120px] h-9">
               <SelectValue placeholder="Profesor" />
@@ -47,14 +43,6 @@ export function Header({
               ))}
             </SelectContent>
           </Select>
-        </div>
-        <div className="flex items-center space-x-2">
-          <Label htmlFor="debug-switch" className="text-sm">Depurar:</Label>
-          <Switch
-            id="debug-switch"
-            checked={debugMode}
-            onCheckedChange={onDebugModeChange}
-          />
         </div>
         <Button onClick={onNewBooking} size="sm">
           <PlusCircle className="mr-2 h-4 w-4" />

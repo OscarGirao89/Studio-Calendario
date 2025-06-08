@@ -56,12 +56,11 @@ type BookingFormValues = z.infer<typeof bookingFormSchema>;
 
 interface BookingFormProps {
   currentTeacher: Teacher;
-  debugMode: boolean;
   onFormSubmit: () => void; 
   bookingToEdit?: Booking | null;
 }
 
-export function BookingForm({ currentTeacher, debugMode, onFormSubmit, bookingToEdit }: BookingFormProps) {
+export function BookingForm({ currentTeacher, onFormSubmit, bookingToEdit }: BookingFormProps) {
   const { toast } = useToast();
   
   const defaultValues: Partial<BookingFormValues> = {
@@ -80,7 +79,6 @@ export function BookingForm({ currentTeacher, debugMode, onFormSubmit, bookingTo
 
   useEffect(() => {
     if (bookingToEdit) {
-      if (debugMode) console.log('Editing booking:', bookingToEdit);
       const valuesToSet: Partial<BookingFormValues> = {
         id: bookingToEdit.id,
         type: bookingToEdit.type,
@@ -91,7 +89,6 @@ export function BookingForm({ currentTeacher, debugMode, onFormSubmit, bookingTo
         endTime: bookingToEdit.endTime,
       };
       if (bookingToEdit.type === 'single') {
-        // Ensure date is a Date object if it exists
         valuesToSet.date = bookingToEdit.date ? parseISO((bookingToEdit as SingleBooking).date) : undefined;
       } else {
         const recurring = bookingToEdit as RecurringBooking;
@@ -100,18 +97,15 @@ export function BookingForm({ currentTeacher, debugMode, onFormSubmit, bookingTo
       }
       form.reset(valuesToSet);
     } else {
-      // When creating new, ensure currentTeacher is set as default teacher in the form
       form.reset({...defaultValues, teacher: currentTeacher });
     }
-  }, [bookingToEdit, form, debugMode, currentTeacher]);
+  }, [bookingToEdit, form, currentTeacher]);
 
 
   const bookingType = form.watch('type');
   const isEditing = !!bookingToEdit;
 
   async function onSubmit(values: BookingFormValues) {
-    if (debugMode) console.log('Form values for submit:', values);
-
     const submissionData = {
       type: values.type,
       className: values.className,
@@ -124,11 +118,8 @@ export function BookingForm({ currentTeacher, debugMode, onFormSubmit, bookingTo
     };
 
     if (isEditing && bookingToEdit && values.id) {
-      if (debugMode) console.log('Attempting to update booking with ID:', values.id, submissionData);
-      // @ts-ignore // TODO: Fix type for updateBookingAction if it differs significantly
+      // @ts-ignore 
       const result = await updateBookingAction(values.id, submissionData);
-      if (debugMode) console.log('Update booking action result:', result);
-
       if (result.success) {
         toast({ title: 'Reserva Actualizada', description: `Clase "${result.booking?.className}" actualizada.` });
         onFormSubmit();
@@ -138,18 +129,13 @@ export function BookingForm({ currentTeacher, debugMode, onFormSubmit, bookingTo
       }
 
     } else {
-      // Add new booking
       const bookingDataForAdd = {
         ...submissionData,
-        createdBy: currentTeacher, // createdBy is only needed for new bookings
+        createdBy: currentTeacher, 
       };
       
-      if (debugMode) console.log('Attempting to add booking:', bookingDataForAdd);
-      
-      // @ts-ignore // TODO: Fix type for addBookingAction if it differs significantly
+      // @ts-ignore 
       const result = await addBookingAction(bookingDataForAdd);
-
-      if (debugMode) console.log('Booking action result:', result);
 
       if (result.success) {
         toast({ title: 'Reserva Creada', description: `Clase "${result.booking?.className}" agendada.` });
@@ -161,7 +147,6 @@ export function BookingForm({ currentTeacher, debugMode, onFormSubmit, bookingTo
     }
   }
 
-  // Reset teacher field if currentTeacher prop changes and not editing
   useEffect(() => {
     if (!isEditing) {
       form.setValue('teacher', currentTeacher);
@@ -339,6 +324,3 @@ export function BookingForm({ currentTeacher, debugMode, onFormSubmit, bookingTo
     </form>
   );
 }
-
-
-    

@@ -16,7 +16,6 @@ interface BookingModalProps {
   isOpen: boolean;
   onOpenChange: (open: boolean) => void;
   currentTeacher: Teacher;
-  debugMode: boolean;
   bookingToEdit?: Booking | null;
 }
 
@@ -24,7 +23,6 @@ export function BookingModal({
   isOpen, 
   onOpenChange, 
   currentTeacher, 
-  debugMode, 
   bookingToEdit 
 }: BookingModalProps) {
   
@@ -48,7 +46,6 @@ export function BookingModal({
         </DialogHeader>
         <BookingForm 
           currentTeacher={currentTeacher} 
-          debugMode={debugMode}
           onFormSubmit={handleFormSubmit}
           bookingToEdit={bookingToEdit}
         />
@@ -56,4 +53,3 @@ export function BookingModal({
     </Dialog>
   );
 }
-

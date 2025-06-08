@@ -1,3 +1,4 @@
+
 'use client';
 
 import React, { useState, useEffect } from 'react';
@@ -10,30 +11,27 @@ import { getMonthName } from '@/lib/date-utils';
 
 interface MonthlySummaryProps {
   currentDate: Date;
-  debugMode: boolean;
   bookingsLastUpdatedAt: number; // Timestamp to trigger re-fetch
 }
 
-export function MonthlySummary({ currentDate, debugMode, bookingsLastUpdatedAt }: MonthlySummaryProps) {
+export function MonthlySummary({ currentDate, bookingsLastUpdatedAt }: MonthlySummaryProps) {
   const [recurringBookings, setRecurringBookings] = useState<RecurringBooking[]>([]);
   const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
     const fetchSummary = async () => {
       setIsLoading(true);
-      if (debugMode) console.log(`Fetching monthly summary for: ${getMonthName(currentDate)}`);
       try {
         const bookings = await getMonthlyRecurringBookings(currentDate);
         setRecurringBookings(bookings);
-        if (debugMode) console.log('Monthly recurring bookings fetched:', bookings);
       } catch (error) {
-        if (debugMode) console.error('Error fetching monthly summary:', error);
+        console.error('Error fetching monthly summary:', error);
         // TODO: Add user-facing error handling
       }
       setIsLoading(false);
     };
     fetchSummary();
-  }, [currentDate, debugMode, bookingsLastUpdatedAt]);
+  }, [currentDate, bookingsLastUpdatedAt]);
 
   return (
     <div className="p-4 md:p-6 mt-8">

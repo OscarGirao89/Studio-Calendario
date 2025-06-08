@@ -11,7 +11,6 @@ import { TEACHERS } from '@/lib/constants'; // To get a default teacher
 
 export default function FusionSchedulePage() {
   const [currentTeacher, setCurrentTeacher] = useState<Teacher>(TEACHERS[0]);
-  const [debugMode, setDebugMode] = useState<boolean>(false);
   const [isBookingModalOpen, setIsBookingModalOpen] = useState<boolean>(false);
   const [editingBooking, setEditingBooking] = useState<Booking | null>(null);
   const [currentCalendarDate, setCurrentCalendarDate] = useState(new Date());
@@ -20,13 +19,6 @@ export default function FusionSchedulePage() {
 
   const handleTeacherChange = (teacher: Teacher) => {
     setCurrentTeacher(teacher);
-    if (debugMode) console.log(`Current teacher changed to: ${teacher}`);
-  };
-
-  const handleDebugModeChange = (enabled: boolean) => {
-    setDebugMode(enabled);
-    if (enabled) console.log('Debug mode ENABLED');
-    else console.log('Debug mode DISABLED');
   };
 
   const handleNewBooking = () => {
@@ -55,22 +47,18 @@ export default function FusionSchedulePage() {
 
   useEffect(() => {
     // This effect could be used to listen to real-time updates if using Firebase
-    if (debugMode) console.log('Page loaded or key state changed.');
-  }, [currentTeacher, debugMode]);
+  }, [currentTeacher]);
 
   return (
     <div className="min-h-screen flex flex-col bg-background">
       <Header
         currentTeacher={currentTeacher}
         onTeacherChange={handleTeacherChange}
-        debugMode={debugMode}
-        onDebugModeChange={handleDebugModeChange}
         onNewBooking={handleNewBooking}
       />
       <main className="flex-grow">
         <WeeklyCalendar 
           initialDate={currentCalendarDate} 
-          debugMode={debugMode}
           bookingsLastUpdatedAt={bookingsLastUpdatedAt}
           currentTeacher={currentTeacher}
           onBookingUpdated={refreshBookings}
@@ -78,7 +66,6 @@ export default function FusionSchedulePage() {
         />
         <MonthlySummary 
           currentDate={currentCalendarDate} 
-          debugMode={debugMode} 
           bookingsLastUpdatedAt={bookingsLastUpdatedAt}
         />
       </main>
@@ -86,10 +73,8 @@ export default function FusionSchedulePage() {
         isOpen={isBookingModalOpen}
         onOpenChange={handleModalOpenChange}
         currentTeacher={currentTeacher}
-        debugMode={debugMode}
         bookingToEdit={editingBooking}
       />
     </div>
   );
 }
-

@@ -27,7 +27,6 @@ import { useToast } from "@/hooks/use-toast";
 
 interface WeeklyCalendarProps {
   initialDate?: Date;
-  debugMode: boolean;
   bookingsLastUpdatedAt: number;
   currentTeacher: Teacher;
   onBookingUpdated: () => void;
@@ -36,7 +35,6 @@ interface WeeklyCalendarProps {
 
 export function WeeklyCalendar({ 
   initialDate = new Date(), 
-  debugMode, 
   bookingsLastUpdatedAt, 
   currentTeacher, 
   onBookingUpdated,
@@ -53,19 +51,17 @@ export function WeeklyCalendar({
   useEffect(() => {
     const fetchBookings = async () => {
       setIsLoading(true);
-      if (debugMode) console.log(`Fetching bookings for week starting: ${formatDate(daysInCurrentWeek[0])}`);
       try {
         const bookings = await getBookingsForWeek(daysInCurrentWeek[0], daysInCurrentWeek[6]);
         setWeekBookings(bookings);
-        if (debugMode) console.log('Bookings fetched:', bookings);
       } catch (error) {
-        if (debugMode) console.error('Error fetching bookings:', error);
+        console.error('Error fetching bookings:', error);
         toast({ variant: "destructive", title: "Error", description: "No se pudieron cargar las reservas." });
       }
       setIsLoading(false);
     };
     fetchBookings();
-  }, [currentDate, debugMode, bookingsLastUpdatedAt, daysInCurrentWeek, toast]);
+  }, [currentDate, bookingsLastUpdatedAt, daysInCurrentWeek, toast]);
 
 
   const handleNavigation = (direction: 'next' | 'prev' | 'today') => {
@@ -113,7 +109,6 @@ export function WeeklyCalendar({
 
   const handleConfirmDelete = async () => {
     if (!bookingToDelete) return;
-    if (debugMode) console.log('Attempting to delete booking:', bookingToDelete.id);
     const result = await deleteBookingAction(bookingToDelete.id);
     if (result.success) {
       toast({ title: "Reserva Eliminada", description: `La clase "${bookingToDelete.className}" ha sido eliminada.` });
@@ -224,4 +219,3 @@ export function WeeklyCalendar({
     </div>
   );
 }
-
