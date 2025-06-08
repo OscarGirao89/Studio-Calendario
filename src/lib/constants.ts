@@ -1,3 +1,4 @@
+
 import type { Teacher, BookingColor, DurationOption, DayOfWeek, TimeSlot } from './types';
 
 export const TEACHERS: Teacher[] = ['Oski', 'Flor', 'Joa'];
@@ -8,9 +9,22 @@ export const BOOKING_COLORS: BookingColor[] = [
   '#45B7D1', // Blue
   '#FED766', // Yellow
   '#9B59B6', // Purple
+  '#FFC0CB', // Pink
+  '#20B2AA', // LightSeaGreen
+  '#FFA07A', // LightSalmon
+  '#8A2BE2', // BlueViolet
+  '#32CD32', // LimeGreen
 ];
 
-export const DURATION_OPTIONS: DurationOption[] = ['1 Mes', '3 Meses', '6 Meses', 'Indefinido'];
+export const DURATION_OPTIONS: DurationOption[] = [
+    '1 Mes', 
+    '2 Meses', 
+    '3 Meses', 
+    '4 Meses', 
+    '5 Meses', 
+    '6 Meses', 
+    'Indefinido'
+];
 
 export const DAYS_OF_WEEK: DayOfWeek[] = ['Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes', 'Sábado', 'Domingo'];
 export const DAYS_OF_WEEK_ENGLISH_MAP: { [key in DayOfWeek]: number } = {
@@ -35,3 +49,4 @@ export const generateTimeSlots = (): TimeSlot[] => {
 };
 
 export const TIME_SLOTS = generateTimeSlots();
+
