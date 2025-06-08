@@ -1,3 +1,4 @@
+
 'use server';
 
 import type { Booking, SingleBooking, RecurringBooking, Teacher, BookingColor, DayOfWeek, DurationOption } from './types';
@@ -38,17 +39,21 @@ let bookings: Booking[] = [
 let nextId = 3;
 
 // --- Helper for Conflict Detection ---
-const checkConflict = (newBooking: Booking): Booking | null => {
+const checkConflict = (newBooking: Booking, SkeepBookingId?: string): Booking | null => {
   const newStartDateTime = combineDateAndTime(
-    newBooking.type === 'single' ? newBooking.date : newBooking.startDate, // Use actual date for single, start date for recurring comparison base
+    newBooking.type === 'single' ? (newBooking as SingleBooking).date : (newBooking as RecurringBooking).startDate, 
     newBooking.startTime
   );
   const newEndDateTime = combineDateAndTime(
-    newBooking.type === 'single' ? newBooking.date : newBooking.startDate,
+    newBooking.type === 'single' ? (newBooking as SingleBooking).date : (newBooking as RecurringBooking).startDate,
     newBooking.endTime
   );
 
   for (const existingBooking of bookings) {
+    if (SkeepBookingId && existingBooking.id === SkeepBookingId) {
+      continue; // Skip the booking being edited
+    }
+
     if (newBooking.type === 'single') {
       const singleNewBooking = newBooking as SingleBooking;
       if (existingBooking.type === 'single') {
@@ -68,8 +73,8 @@ const checkConflict = (newBooking: Booking): Booking | null => {
         if (getDay(newBookingDateObj) === bookingDayNum) {
           const recurringStartDate = parseISO(recurringExisting.startDate);
           const recurringEndDate = recurringExisting.endDate ? parseISO(recurringExisting.endDate) : null;
-          if (isWithinInterval(newBookingDateObj, { start: recurringStartDate, end: recurringEndDate || addDays(recurringStartDate, 365*5) })) { // Check if date is within recurring range
-            const existingStart = combineDateAndTime(singleNewBooking.date, recurringExisting.startTime); // Compare on the specific date
+          if (isWithinInterval(newBookingDateObj, { start: recurringStartDate, end: recurringEndDate || addDays(recurringStartDate, 365*5) })) { 
+            const existingStart = combineDateAndTime(singleNewBooking.date, recurringExisting.startTime); 
             const existingEnd = combineDateAndTime(singleNewBooking.date, recurringExisting.endTime);
             if (newStartDateTime < existingEnd && newEndDateTime > existingStart) return existingBooking;
           }
@@ -98,19 +103,18 @@ const checkConflict = (newBooking: Booking): Booking | null => {
         // Recurring vs Recurring
         const recurringExisting = existingBooking as RecurringBooking;
         if (recurringNewBooking.dayOfWeek === recurringExisting.dayOfWeek) {
-          const newInstanceStart = combineDateAndTime(formatDate(new Date()), recurringNewBooking.startTime); // Use arbitrary date for time comparison
+          const newInstanceStart = combineDateAndTime(formatDate(new Date()), recurringNewBooking.startTime); 
           const newInstanceEnd = combineDateAndTime(formatDate(new Date()), recurringNewBooking.endTime);
           const existingInstanceStart = combineDateAndTime(formatDate(new Date()), recurringExisting.startTime);
           const existingInstanceEnd = combineDateAndTime(formatDate(new Date()), recurringExisting.endTime);
 
-          if (newInstanceStart < existingInstanceEnd && newInstanceEnd > existingInstanceStart) { // Times overlap
-            // Check if date ranges overlap
+          if (newInstanceStart < existingInstanceEnd && newInstanceEnd > existingInstanceStart) { 
             const newRangeStart = parseISO(recurringNewBooking.startDate);
             const newRangeEnd = recurringNewBooking.endDate ? parseISO(recurringNewBooking.endDate) : null;
             const existingRangeStart = parseISO(recurringExisting.startDate);
             const existingRangeEnd = recurringExisting.endDate ? parseISO(recurringExisting.endDate) : null;
 
-            const newEndComparable = newRangeEnd || addDays(newRangeStart, 365*5); // 5 years for 'Indefinido'
+            const newEndComparable = newRangeEnd || addDays(newRangeStart, 365*5); 
             const existingEndComparable = existingRangeEnd || addDays(existingRangeStart, 365*5);
 
             if (newRangeStart < existingEndComparable && newEndComparable > existingRangeStart) return existingBooking;
@@ -124,7 +128,7 @@ const checkConflict = (newBooking: Booking): Booking | null => {
 
 
 export async function addBookingAction(
-  formData: Omit<Booking, 'id' | 'startDate' | 'endDate'> & { date?: string, dayOfWeek?: DayOfWeek, duration?: DurationOption }
+  formData: Omit<Booking, 'id' | 'startDate' | 'endDate' | 'createdBy'> & { date?: string, dayOfWeek?: DayOfWeek, duration?: DurationOption, createdBy: Teacher }
 ): Promise<{ success: boolean; message?: string; booking?: Booking }> {
   
   const newBookingBase = {
@@ -148,7 +152,7 @@ export async function addBookingAction(
     } as SingleBooking;
   } else { // recurring
     if (!formData.dayOfWeek || !formData.duration) return { success: false, message: 'Day of week and duration are required for recurring booking.' };
-    const sDate = new Date();
+    const sDate = new Date(); // For new recurring bookings, startDate is today
     const eDate = calculateEndDate(sDate, formData.duration);
     finalNewBooking = {
       ...newBookingBase,
@@ -162,13 +166,74 @@ export async function addBookingAction(
   
   const conflict = checkConflict(finalNewBooking);
   if (conflict) {
-    return { success: false, message: `Conflict detected with class: "${conflict.className}" by ${conflict.teacher} on ${conflict.type === 'single' ? conflict.date : conflict.dayOfWeek} at ${conflict.startTime}-${conflict.endTime}.` };
+    nextId--; // Rollback id increment if conflict
+    return { success: false, message: `Conflicto detectado con la clase: "${conflict.className}" por ${conflict.teacher} el ${conflict.type === 'single' ? (conflict as SingleBooking).date : (conflict as RecurringBooking).dayOfWeek} de ${conflict.startTime}-${conflict.endTime}.` };
   }
 
   bookings.push(finalNewBooking);
-  revalidatePath('/'); // Revalidate the page to show new booking
+  revalidatePath('/'); 
   return { success: true, booking: finalNewBooking };
 }
+
+export async function updateBookingAction(
+  bookingId: string,
+  formData: Omit<Booking, 'id' | 'createdBy'> & { date?: string, dayOfWeek?: DayOfWeek, duration?: DurationOption }
+): Promise<{ success: boolean; message?: string; booking?: Booking }> {
+  
+  const bookingIndex = bookings.findIndex(b => b.id === bookingId);
+  if (bookingIndex === -1) {
+    return { success: false, message: 'Reserva no encontrada.' };
+  }
+
+  const existingBooking = bookings[bookingIndex];
+
+  // Retain original createdBy and for recurring, potentially original startDate/endDate if not changed by form
+  const updatedBookingBase = {
+    ...existingBooking, // Keep original id and createdBy
+    className: formData.className,
+    teacher: formData.teacher,
+    startTime: formData.startTime,
+    endTime: formData.endTime,
+    color: formData.color,
+  };
+
+  let finalUpdatedBooking: Booking;
+
+  if (formData.type === 'single') {
+    if (!formData.date) return { success: false, message: 'Date is required for single booking.' };
+    finalUpdatedBooking = {
+      ...updatedBookingBase,
+      type: 'single',
+      date: formData.date,
+    } as SingleBooking;
+  } else { // recurring
+    if (!formData.dayOfWeek || !formData.duration) return { success: false, message: 'Day of week and duration are required for recurring booking.' };
+    // For recurring, if duration changes, startDate might need to be re-evaluated or kept.
+    // For simplicity, we'll assume startDate doesn't change on edit, only endDate if duration changes.
+    // If type changes from single to recurring, new startDate would be today. But type change is disabled.
+    const sDate = (existingBooking as RecurringBooking).startDate ? parseISO((existingBooking as RecurringBooking).startDate) : new Date();
+    const eDate = calculateEndDate(sDate, formData.duration);
+    
+    finalUpdatedBooking = {
+      ...updatedBookingBase,
+      type: 'recurring',
+      dayOfWeek: formData.dayOfWeek,
+      startDate: formatDate(sDate), // Keep original start date or set to today if it was somehow missing
+      endDate: eDate ? formatDate(eDate) : null,
+      duration: formData.duration,
+    } as RecurringBooking;
+  }
+  
+  const conflict = checkConflict(finalUpdatedBooking, bookingId); // Pass bookingId to ignore self in conflict check
+  if (conflict) {
+    return { success: false, message: `Conflicto detectado con la clase: "${conflict.className}" por ${conflict.teacher} el ${conflict.type === 'single' ? (conflict as SingleBooking).date : (conflict as RecurringBooking).dayOfWeek} de ${conflict.startTime}-${conflict.endTime}.` };
+  }
+
+  bookings[bookingIndex] = finalUpdatedBooking;
+  revalidatePath('/'); 
+  return { success: true, booking: finalUpdatedBooking };
+}
+
 
 export async function getBookingsForWeek(weekStartDate: Date, weekEndDate: Date): Promise<Booking[]> {
   const weekStartStr = formatDate(weekStartDate);
@@ -182,14 +247,13 @@ export async function getBookingsForWeek(weekStartDate: Date, weekEndDate: Date)
       const bookingStartDateObj = parseISO(booking.startDate);
       const bookingEndDateObj = booking.endDate ? parseISO(booking.endDate) : null;
 
-      // Check if any day in the week matches the recurring day and is within the booking's date range
       for (let i = 0; i < 7; i++) {
         const dayInWeek = addDays(weekStartDate, i);
         if (getDay(dayInWeek) === bookingDayNum) {
           const dayIsAfterOrOnStartDate = dayInWeek >= bookingStartDateObj || isEqual(dayInWeek, bookingStartDateObj);
           const dayIsBeforeOrOnEndDate = !bookingEndDateObj || dayInWeek <= bookingEndDateObj || isEqual(dayInWeek, bookingEndDateObj);
           if (dayIsAfterOrOnStartDate && dayIsBeforeOrOnEndDate) {
-            return true; // This recurring booking happens at least once in the visible week
+            return true; 
           }
         }
       }
@@ -208,8 +272,7 @@ export async function getMonthlyRecurringBookings(currentDate: Date): Promise<Re
       const bookingStartDate = parseISO(b.startDate);
       const bookingEndDate = b.endDate ? parseISO(b.endDate) : null;
       
-      // Check if booking's active range overlaps with the current month
-      const bookingEndComparable = bookingEndDate || addDays(bookingStartDate, 365*5); // Consider Indefinido active for a long time
+      const bookingEndComparable = bookingEndDate || addDays(bookingStartDate, 365*5); 
 
       if (bookingStartDate < monthEnd && bookingEndComparable > monthStart) {
         return true;
@@ -219,8 +282,14 @@ export async function getMonthlyRecurringBookings(currentDate: Date): Promise<Re
   }) as RecurringBooking[];
 }
 
-export async function deleteBookingAction(id: string): Promise<{ success: boolean }> {
+export async function deleteBookingAction(id: string): Promise<{ success: boolean, message?: string }> {
+  const initialLength = bookings.length;
   bookings = bookings.filter(b => b.id !== id);
-  revalidatePath('/');
-  return { success: true };
+  if (bookings.length < initialLength) {
+    revalidatePath('/');
+    return { success: true };
+  }
+  return { success: false, message: "Reserva no encontrada para eliminar."};
 }
+
+    

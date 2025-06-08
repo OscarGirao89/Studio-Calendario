@@ -12,16 +12,17 @@ import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Calendar } from '@/components/ui/calendar';
-import { CalendarIcon, Palette } from 'lucide-react';
+import { CalendarIcon } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { format, parseISO } from 'date-fns';
 import { es } from 'date-fns/locale';
 import { TEACHERS, BOOKING_COLORS, DURATION_OPTIONS, DAYS_OF_WEEK, TIME_SLOTS } from '@/lib/constants';
 import type { Teacher, BookingType, BookingColor, DayOfWeek, DurationOption, Booking, SingleBooking, RecurringBooking } from '@/lib/types';
 import { useToast } from '@/hooks/use-toast';
-import { addBookingAction } from '@/lib/actions'; // updateBookingAction will be added later
+import { addBookingAction, updateBookingAction } from '@/lib/actions';
 
 const bookingFormSchema = z.object({
+  id: z.string().optional(), // For identifying booking to update
   type: z.enum(['single', 'recurring'] as [BookingType, ...BookingType[]]),
   teacher: z.enum(TEACHERS as [Teacher, ...Teacher[]]),
   className: z.string().min(1, 'Nombre de la clase es requerido'),
@@ -31,7 +32,6 @@ const bookingFormSchema = z.object({
   date: z.date().optional(), 
   dayOfWeek: z.enum(DAYS_OF_WEEK as [DayOfWeek, ...DayOfWeek[]]).optional(), 
   duration: z.enum(DURATION_OPTIONS as [DurationOption, ...DurationOption[]]).optional(), 
-  id: z.string().optional(), // For identifying booking to update
 }).refine(data => {
   if (data.type === 'single' && !data.date) {
     return false;
@@ -91,7 +91,8 @@ export function BookingForm({ currentTeacher, debugMode, onFormSubmit, bookingTo
         endTime: bookingToEdit.endTime,
       };
       if (bookingToEdit.type === 'single') {
-        valuesToSet.date = parseISO((bookingToEdit as SingleBooking).date);
+        // Ensure date is a Date object if it exists
+        valuesToSet.date = bookingToEdit.date ? parseISO((bookingToEdit as SingleBooking).date) : undefined;
       } else {
         const recurring = bookingToEdit as RecurringBooking;
         valuesToSet.dayOfWeek = recurring.dayOfWeek;
@@ -99,62 +100,81 @@ export function BookingForm({ currentTeacher, debugMode, onFormSubmit, bookingTo
       }
       form.reset(valuesToSet);
     } else {
-      form.reset(defaultValues); // Reset to defaults if not editing
+      // When creating new, ensure currentTeacher is set as default teacher in the form
+      form.reset({...defaultValues, teacher: currentTeacher });
     }
   }, [bookingToEdit, form, debugMode, currentTeacher]);
+
 
   const bookingType = form.watch('type');
   const isEditing = !!bookingToEdit;
 
   async function onSubmit(values: BookingFormValues) {
-    if (debugMode) console.log('Form values:', values);
+    if (debugMode) console.log('Form values for submit:', values);
 
-    if (isEditing && bookingToEdit) {
-      // Call updateBookingAction - To be implemented
-      if (debugMode) console.log('Attempting to update booking:', { ...bookingToEdit, ...values });
-      // const result = await updateBookingAction(bookingToEdit.id, values);
-      // For now, simulate success for UI flow
-      toast({ title: 'Reserva Actualizada (Simulado)', description: `Clase "${values.className}" actualizada.` });
-      onFormSubmit();
-      form.reset(defaultValues);
+    const submissionData = {
+      type: values.type,
+      className: values.className,
+      teacher: values.teacher,
+      startTime: values.startTime,
+      endTime: values.endTime,
+      color: values.color,
+      ...(values.type === 'single' && values.date && { date: format(values.date, 'yyyy-MM-dd') }),
+      ...(values.type === 'recurring' && { dayOfWeek: values.dayOfWeek, duration: values.duration }),
+    };
+
+    if (isEditing && bookingToEdit && values.id) {
+      if (debugMode) console.log('Attempting to update booking with ID:', values.id, submissionData);
+      // @ts-ignore // TODO: Fix type for updateBookingAction if it differs significantly
+      const result = await updateBookingAction(values.id, submissionData);
+      if (debugMode) console.log('Update booking action result:', result);
+
+      if (result.success) {
+        toast({ title: 'Reserva Actualizada', description: `Clase "${result.booking?.className}" actualizada.` });
+        onFormSubmit();
+        form.reset({...defaultValues, teacher: currentTeacher });
+      } else {
+        toast({ variant: 'destructive', title: 'Error al Actualizar Reserva', description: result.message });
+      }
 
     } else {
       // Add new booking
-      const bookingData = {
-        type: values.type,
-        className: values.className,
-        teacher: values.teacher,
-        createdBy: currentTeacher, 
-        startTime: values.startTime,
-        endTime: values.endTime,
-        color: values.color,
-        ...(values.type === 'single' && values.date && { date: format(values.date, 'yyyy-MM-dd') }),
-        ...(values.type === 'recurring' && { dayOfWeek: values.dayOfWeek, duration: values.duration }),
+      const bookingDataForAdd = {
+        ...submissionData,
+        createdBy: currentTeacher, // createdBy is only needed for new bookings
       };
       
-      if (debugMode) console.log('Attempting to add booking:', bookingData);
+      if (debugMode) console.log('Attempting to add booking:', bookingDataForAdd);
       
-      // @ts-ignore 
-      const result = await addBookingAction(bookingData);
+      // @ts-ignore // TODO: Fix type for addBookingAction if it differs significantly
+      const result = await addBookingAction(bookingDataForAdd);
 
       if (debugMode) console.log('Booking action result:', result);
 
       if (result.success) {
         toast({ title: 'Reserva Creada', description: `Clase "${result.booking?.className}" agendada.` });
         onFormSubmit(); 
-        form.reset(defaultValues);
+        form.reset({...defaultValues, teacher: currentTeacher });
       } else {
         toast({ variant: 'destructive', title: 'Error al Crear Reserva', description: result.message });
       }
     }
   }
 
+  // Reset teacher field if currentTeacher prop changes and not editing
+  useEffect(() => {
+    if (!isEditing) {
+      form.setValue('teacher', currentTeacher);
+    }
+  }, [currentTeacher, isEditing, form]);
+
+
   return (
     <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6 p-1">
       <div className="space-y-2">
         <Label>Tipo de Reserva</Label>
         <RadioGroup
-          value={form.watch('type')} // Controlled component
+          value={form.watch('type')} 
           onValueChange={(value) => form.setValue('type', value as BookingType, { shouldValidate: true })}
           className="flex space-x-4"
         >
@@ -176,7 +196,6 @@ export function BookingForm({ currentTeacher, debugMode, onFormSubmit, bookingTo
           <Select 
             value={form.watch('teacher')}
             onValueChange={(value) => form.setValue('teacher', value as Teacher)} 
-            defaultValue={currentTeacher}
           >
             <SelectTrigger id="teacher">
               <SelectValue placeholder="Seleccionar profesor" />
@@ -321,3 +340,5 @@ export function BookingForm({ currentTeacher, debugMode, onFormSubmit, bookingTo
   );
 }
 
+
+    
