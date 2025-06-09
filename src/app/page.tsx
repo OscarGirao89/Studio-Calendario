@@ -8,18 +8,12 @@ import { WeeklyCalendar } from '@/components/calendar/WeeklyCalendar';
 import { MonthlySummary } from '@/components/summary/MonthlySummary';
 import { BookingModal } from '@/components/booking/BookingModal';
 import type { Teacher, Booking } from '@/lib/types';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Button } from '@/components/ui/button';
 import { useToast } from '@/hooks/use-toast';
 import { KeyRound } from 'lucide-react';
-import {
-  Accordion,
-  AccordionContent,
-  AccordionItem,
-  AccordionTrigger,
-} from "@/components/ui/accordion";
 
 const USER_CREDENTIALS_KEY = 'userAppCredentials';
 
@@ -31,6 +25,7 @@ export default function FusionSchedulePage() {
   const [currentCalendarDate, setCurrentCalendarDate] = useState(new Date());
   const [bookingsLastUpdatedAt, setBookingsLastUpdatedAt] = useState<number>(Date.now());
   
+  const [isChangePasswordModalOpen, setIsChangePasswordModalOpen] = useState<boolean>(false);
   const [newPassword, setNewPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
   const [isPasswordSaving, setIsPasswordSaving] = useState(false);
@@ -70,7 +65,7 @@ export default function FusionSchedulePage() {
     setIsBookingModalOpen(true);
   };
   
-  const handleModalOpenChange = (open: boolean) => {
+  const handleBookingModalOpenChange = (open: boolean) => {
     setIsBookingModalOpen(open);
     if (!open) {
       setEditingBooking(null); 
@@ -78,18 +73,26 @@ export default function FusionSchedulePage() {
     }
   };
 
+  const handleChangePasswordModalOpenChange = (open: boolean) => {
+    setIsChangePasswordModalOpen(open);
+    if (!open) {
+      setNewPassword('');
+      setConfirmPassword('');
+    }
+  };
+
   const refreshBookings = () => {
     setBookingsLastUpdatedAt(Date.now());
   }
 
-  const handlePasswordChange = async (e: React.FormEvent) => {
+  const handlePasswordChangeSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!currentTeacher || isGuest) return;
     if (newPassword !== confirmPassword) {
       toast({ variant: 'destructive', title: 'Error', description: 'Las contraseñas no coinciden.' });
       return;
     }
-    if (newPassword.length < 3) { // Simple validation
+    if (newPassword.length < 3) { 
       toast({ variant: 'destructive', title: 'Error', description: 'La contraseña debe tener al menos 3 caracteres.' });
       return;
     }
@@ -103,6 +106,7 @@ export default function FusionSchedulePage() {
       toast({ title: 'Contraseña Actualizada', description: 'Tu contraseña ha sido cambiada exitosamente.' });
       setNewPassword('');
       setConfirmPassword('');
+      setIsChangePasswordModalOpen(false);
     } catch (error) {
       toast({ variant: 'destructive', title: 'Error', description: 'No se pudo guardar la contraseña.' });
     } finally {
@@ -126,7 +130,6 @@ export default function FusionSchedulePage() {
     );
   }
 
-
   return (
     <div className="min-h-screen flex flex-col bg-background">
       <Header
@@ -134,6 +137,7 @@ export default function FusionSchedulePage() {
         isGuest={isGuest}
         onLogout={handleLogout}
         onNewBooking={handleNewBooking}
+        onChangePassword={() => setIsChangePasswordModalOpen(true)}
       />
       <main className="flex-grow">
         <WeeklyCalendar 
@@ -148,66 +152,60 @@ export default function FusionSchedulePage() {
           currentDate={currentCalendarDate} 
           bookingsLastUpdatedAt={bookingsLastUpdatedAt}
         />
-
-        {!isGuest && currentTeacher && (
-          <div className="p-4 md:p-6 mt-8">
-            <Card className="shadow-lg max-w-md mx-auto">
-              <Accordion type="single" collapsible className="w-full">
-                <AccordionItem value="item-1">
-                  <AccordionTrigger className="p-6">
-                    <div className="flex items-center">
-                      <KeyRound className="mr-3 h-6 w-6 text-primary" />
-                      <CardTitle className="text-xl md:text-2xl font-headline">
-                        Cambiar Contraseña
-                      </CardTitle>
-                    </div>
-                  </AccordionTrigger>
-                  <AccordionContent>
-                    <CardDescription className="px-6 pb-4 -mt-3">
-                      Actualiza tu contraseña de acceso al sistema.
-                    </CardDescription>
-                    <CardContent>
-                      <form onSubmit={handlePasswordChange} className="space-y-4">
-                        <div>
-                          <Label htmlFor="newPassword">Nueva Contraseña</Label>
-                          <Input 
-                            id="newPassword" 
-                            type="password" 
-                            value={newPassword}
-                            onChange={(e) => setNewPassword(e.target.value)}
-                            required 
-                          />
-                        </div>
-                        <div>
-                          <Label htmlFor="confirmPassword">Confirmar Nueva Contraseña</Label>
-                          <Input 
-                            id="confirmPassword" 
-                            type="password" 
-                            value={confirmPassword}
-                            onChange={(e) => setConfirmPassword(e.target.value)}
-                            required 
-                          />
-                        </div>
-                        <Button type="submit" className="w-full" disabled={isPasswordSaving}>
-                          {isPasswordSaving ? 'Guardando...' : 'Guardar Contraseña'}
-                        </Button>
-                      </form>
-                    </CardContent>
-                  </AccordionContent>
-                </AccordionItem>
-              </Accordion>
-            </Card>
-          </div>
-        )}
-
       </main>
+
       {isBookingModalOpen && currentTeacher && !isGuest && ( 
         <BookingModal
           isOpen={isBookingModalOpen}
-          onOpenChange={handleModalOpenChange}
+          onOpenChange={handleBookingModalOpenChange}
           currentTeacher={currentTeacher} 
           bookingToEdit={editingBooking}
         />
+      )}
+
+      {isChangePasswordModalOpen && currentTeacher && !isGuest && (
+        <Dialog open={isChangePasswordModalOpen} onOpenChange={handleChangePasswordModalOpenChange}>
+          <DialogContent className="sm:max-w-md">
+            <DialogHeader>
+              <DialogTitle className="font-headline text-2xl flex items-center">
+                <KeyRound className="mr-3 h-6 w-6 text-primary" />
+                Cambiar Contraseña
+              </DialogTitle>
+              <DialogDescription>
+                Actualiza tu contraseña de acceso al sistema.
+              </DialogDescription>
+            </DialogHeader>
+            <form onSubmit={handlePasswordChangeSubmit} className="space-y-4 pt-2">
+              <div>
+                <Label htmlFor="newPasswordModal">Nueva Contraseña</Label>
+                <Input 
+                  id="newPasswordModal" 
+                  type="password" 
+                  value={newPassword}
+                  onChange={(e) => setNewPassword(e.target.value)}
+                  required 
+                  placeholder="Mínimo 3 caracteres"
+                />
+              </div>
+              <div>
+                <Label htmlFor="confirmPasswordModal">Confirmar Nueva Contraseña</Label>
+                <Input 
+                  id="confirmPasswordModal" 
+                  type="password" 
+                  value={confirmPassword}
+                  onChange={(e) => setConfirmPassword(e.target.value)}
+                  required 
+                  placeholder="Repite la contraseña"
+                />
+              </div>
+              <DialogFooter className="pt-2">
+                <Button type="submit" className="w-full sm:w-auto" disabled={isPasswordSaving}>
+                  {isPasswordSaving ? 'Guardando...' : 'Guardar Contraseña'}
+                </Button>
+              </DialogFooter>
+            </form>
+          </DialogContent>
+        </Dialog>
       )}
     </div>
   );
