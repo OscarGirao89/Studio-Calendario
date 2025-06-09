@@ -26,7 +26,6 @@ export function Header({
     <header className="p-4 border-b border-border flex flex-col sm:flex-row items-center justify-between space-y-4 sm:space-y-0 sticky top-0 bg-background/95 backdrop-blur z-40">
       <div className="flex items-center space-x-3">
         <LogoIcon className="h-8 w-auto" />
-        <h1 className="text-2xl font-headline font-bold text-primary">SucioStudio</h1>
       </div>
       <div className="flex flex-col sm:flex-row items-center space-y-3 sm:space-y-0 sm:space-x-3">
         <div className="flex items-center space-x-2">
