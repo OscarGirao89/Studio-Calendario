@@ -16,15 +16,15 @@ import { CalendarIcon } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { format, parseISO } from 'date-fns';
 import { es } from 'date-fns/locale';
-import { BOOKING_COLORS, DURATION_OPTIONS, DAYS_OF_WEEK, TIME_SLOTS } from '@/lib/constants';
+import { BOOKING_COLORS, DURATION_OPTIONS, DAYS_OF_WEEK, TIME_SLOTS, TEACHERS } from '@/lib/constants';
 import type { Teacher as SystemUser, BookingType, BookingColor, DayOfWeek, DurationOption, Booking, SingleBooking, RecurringBooking } from '@/lib/types';
 import { useToast } from '@/hooks/use-toast';
 import { addBookingAction, updateBookingAction } from '@/lib/actions';
 
 const bookingFormSchema = z.object({
-  id: z.string().optional(), // For identifying booking to update
+  id: z.string().optional(), 
   type: z.enum(['single', 'recurring'] as [BookingType, ...BookingType[]]),
-  teacher: z.string().min(1, 'Nombre del profesor es requerido'), // Profesor que imparte la clase - now a string
+  teacher: z.string().min(1, 'Nombre del profesor es requerido'), // Profesor que imparte - ahora un string
   className: z.string().min(1, 'Nombre de la clase es requerido'),
   color: z.enum(BOOKING_COLORS as [BookingColor, ...BookingColor[]]),
   startTime: z.string().min(1, "Hora de inicio es requerida"),
@@ -55,7 +55,7 @@ const bookingFormSchema = z.object({
 type BookingFormValues = z.infer<typeof bookingFormSchema>;
 
 interface BookingFormProps {
-  currentTeacher: SystemUser; // Este es el "Usuario" actual del header, quien crea la reserva
+  currentTeacher: SystemUser; // Este es el "Usuario" actual logeado, quien crea la reserva
   onFormSubmit: () => void;
   bookingToEdit?: Booking | null;
 }
@@ -63,26 +63,17 @@ interface BookingFormProps {
 export function BookingForm({ currentTeacher, onFormSubmit, bookingToEdit }: BookingFormProps) {
   const { toast } = useToast();
 
-  const defaultValues: Partial<BookingFormValues> = {
-    type: 'single',
-    teacher: currentTeacher, // Default to the logged-in user, but can be overridden
-    className: '',
-    color: BOOKING_COLORS[0],
-    startTime: '09:00',
-    endTime: '10:00',
-  };
-
   const form = useForm<BookingFormValues>({
     resolver: zodResolver(bookingFormSchema),
-    defaultValues: defaultValues,
+    // Default values will be set in useEffect
   });
-
+  
   useEffect(() => {
     if (bookingToEdit) {
       const valuesToSet: Partial<BookingFormValues> = {
         id: bookingToEdit.id,
         type: bookingToEdit.type,
-        teacher: bookingToEdit.teacher, 
+        teacher: bookingToEdit.teacher, // Set from booking being edited
         className: bookingToEdit.className,
         color: bookingToEdit.color,
         startTime: bookingToEdit.startTime,
@@ -97,7 +88,15 @@ export function BookingForm({ currentTeacher, onFormSubmit, bookingToEdit }: Boo
       }
       form.reset(valuesToSet);
     } else {
-      form.reset({...defaultValues, teacher: currentTeacher });
+      // For new bookings, set default teacher to current logged-in user
+      form.reset({
+        type: 'single',
+        teacher: currentTeacher, 
+        className: '',
+        color: BOOKING_COLORS[0],
+        startTime: '09:00',
+        endTime: '10:00',
+      });
     }
   }, [bookingToEdit, form, currentTeacher]);
 
@@ -122,15 +121,15 @@ export function BookingForm({ currentTeacher, onFormSubmit, bookingToEdit }: Boo
       if (result.success) {
         toast({ title: 'Reserva Actualizada', description: `Clase "${result.booking?.className}" actualizada.` });
         onFormSubmit();
-        form.reset({...defaultValues, teacher: currentTeacher });
       } else {
         toast({ variant: 'destructive', title: 'Error al Actualizar Reserva', description: result.message });
       }
 
     } else {
+      // For new bookings, createdBy is the current logged-in teacher
       const bookingDataForAdd = {
         ...submissionData,
-        createdBy: currentTeacher,
+        createdBy: currentTeacher, 
       };
       
       const result = await addBookingAction(bookingDataForAdd);
@@ -138,7 +137,6 @@ export function BookingForm({ currentTeacher, onFormSubmit, bookingToEdit }: Boo
       if (result.success) {
         toast({ title: 'Reserva Creada', description: `Clase "${result.booking?.className}" agendada.` });
         onFormSubmit();
-        form.reset({...defaultValues, teacher: currentTeacher });
       } else {
         toast({ variant: 'destructive', title: 'Error al Crear Reserva', description: result.message });
       }
@@ -174,7 +172,11 @@ export function BookingForm({ currentTeacher, onFormSubmit, bookingToEdit }: Boo
       
       <div>
         <Label htmlFor="teacher">Profesor que imparte</Label>
-        <Input id="teacher" {...form.register('teacher')} />
+        <Input 
+          id="teacher" 
+          {...form.register('teacher')} 
+          placeholder="Nombre del profesor"
+        />
         {form.formState.errors.teacher && <p className="text-sm text-destructive">{form.formState.errors.teacher.message}</p>}
       </div>
 
@@ -299,7 +301,7 @@ export function BookingForm({ currentTeacher, onFormSubmit, bookingToEdit }: Boo
         </RadioGroup>
       </div>
 
-      <Button type="submit" className="w-full" disabled={form.formState.isSubmitting}>
+      <Button type="submit" className="w-full" disabled={form.formState.isSubmitting || !currentTeacher}>
         {form.formState.isSubmitting ? 'Guardando...' : (isEditing ? 'Actualizar Reserva' : 'Guardar Reserva')}
       </Button>
     </form>

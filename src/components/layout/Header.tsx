@@ -1,25 +1,21 @@
 
 'use client';
 
-import type { ChangeEvent } from 'react';
 import React from 'react';
 import { Button } from '@/components/ui/button';
-import { Label } from '@/components/ui/label';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { LogoIcon } from '@/components/icons/LogoIcon';
-import { TEACHERS } from '@/lib/constants';
 import type { Teacher } from '@/lib/types';
-import { PlusCircle } from 'lucide-react';
+import { PlusCircle, LogOut } from 'lucide-react';
 
 interface HeaderProps {
-  currentTeacher: Teacher;
-  onTeacherChange: (teacher: Teacher) => void;
+  loggedInUser: Teacher; // Changed from currentTeacher
+  onLogout: () => void;   // Added for logout
   onNewBooking: () => void;
 }
 
 export function Header({
-  currentTeacher,
-  onTeacherChange,
+  loggedInUser,
+  onLogout,
   onNewBooking,
 }: HeaderProps) {
   return (
@@ -30,23 +26,16 @@ export function Header({
       </div>
       <div className="flex flex-col sm:flex-row items-center space-y-2 sm:space-y-0 sm:space-x-4">
         <div className="flex items-center space-x-2">
-          <Label htmlFor="teacher-select" className="text-sm">Usuario:</Label>
-          <Select value={currentTeacher} onValueChange={onTeacherChange}>
-            <SelectTrigger id="teacher-select" className="w-[120px] h-9">
-              <SelectValue placeholder="Profesor" />
-            </SelectTrigger>
-            <SelectContent>
-              {TEACHERS.map((teacher) => (
-                <SelectItem key={teacher} value={teacher}>
-                  {teacher}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
+          <span className="text-sm text-foreground">Usuario:</span>
+          <span className="text-sm font-semibold text-accent">{loggedInUser}</span>
         </div>
-        <Button onClick={onNewBooking} size="sm">
+        <Button onClick={onNewBooking} size="sm" variant="outline">
           <PlusCircle className="mr-2 h-4 w-4" />
           Nueva Reserva
+        </Button>
+        <Button onClick={onLogout} size="sm" variant="ghost">
+          <LogOut className="mr-2 h-4 w-4" />
+          Cerrar Sesión
         </Button>
       </div>
     </header>

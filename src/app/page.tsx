@@ -1,32 +1,47 @@
 
-'use client'; // Top-level page needs to be client for state management hooks
+'use client'; 
 
 import React, { useState, useEffect } from 'react';
+import { useRouter } from 'next/navigation';
 import { Header } from '@/components/layout/Header';
 import { WeeklyCalendar } from '@/components/calendar/WeeklyCalendar';
 import { MonthlySummary } from '@/components/summary/MonthlySummary';
 import { BookingModal } from '@/components/booking/BookingModal';
 import type { Teacher, Booking } from '@/lib/types';
-import { TEACHERS } from '@/lib/constants'; // To get a default teacher
+// TEACHERS constant is not directly used here anymore for selection, but BookingForm might still use it if needed
+// import { TEACHERS } from '@/lib/constants'; 
 
 export default function FusionSchedulePage() {
-  const [currentTeacher, setCurrentTeacher] = useState<Teacher>(TEACHERS[0]);
+  const [currentTeacher, setCurrentTeacher] = useState<Teacher | null>(null);
   const [isBookingModalOpen, setIsBookingModalOpen] = useState<boolean>(false);
   const [editingBooking, setEditingBooking] = useState<Booking | null>(null);
   const [currentCalendarDate, setCurrentCalendarDate] = useState(new Date());
   const [bookingsLastUpdatedAt, setBookingsLastUpdatedAt] = useState<number>(Date.now());
+  const router = useRouter();
 
+  useEffect(() => {
+    const loggedInUser = localStorage.getItem('loggedInUser') as Teacher | null;
+    if (!loggedInUser) {
+      router.push('/login');
+    } else {
+      setCurrentTeacher(loggedInUser);
+    }
+  }, [router]);
 
-  const handleTeacherChange = (teacher: Teacher) => {
-    setCurrentTeacher(teacher);
+  const handleLogout = () => {
+    localStorage.removeItem('loggedInUser');
+    setCurrentTeacher(null);
+    router.push('/login');
   };
 
   const handleNewBooking = () => {
-    setEditingBooking(null); // Ensure we are not editing
+    if (!currentTeacher) return; // Should not happen if logged in
+    setEditingBooking(null); 
     setIsBookingModalOpen(true);
   };
 
   const handleEditBookingRequested = (booking: Booking) => {
+    if (!currentTeacher) return; // Should not happen
     setEditingBooking(booking);
     setIsBookingModalOpen(true);
   };
@@ -34,8 +49,7 @@ export default function FusionSchedulePage() {
   const handleModalOpenChange = (open: boolean) => {
     setIsBookingModalOpen(open);
     if (!open) {
-      setEditingBooking(null); // Clear editing booking when modal closes
-      // When modal closes, typically after a booking, refresh bookings
+      setEditingBooking(null); 
       setBookingsLastUpdatedAt(Date.now());
     }
   };
@@ -44,16 +58,20 @@ export default function FusionSchedulePage() {
     setBookingsLastUpdatedAt(Date.now());
   }
 
-
-  useEffect(() => {
-    // This effect could be used to listen to real-time updates if using Firebase
-  }, [currentTeacher]);
+  if (!currentTeacher) {
+    // Render a loading state or null while checking auth and redirecting
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-background">
+        <p className="text-lg text-foreground">Cargando...</p>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen flex flex-col bg-background">
       <Header
-        currentTeacher={currentTeacher}
-        onTeacherChange={handleTeacherChange}
+        loggedInUser={currentTeacher}
+        onLogout={handleLogout}
         onNewBooking={handleNewBooking}
       />
       <main className="flex-grow">
@@ -69,12 +87,14 @@ export default function FusionSchedulePage() {
           bookingsLastUpdatedAt={bookingsLastUpdatedAt}
         />
       </main>
-      <BookingModal
-        isOpen={isBookingModalOpen}
-        onOpenChange={handleModalOpenChange}
-        currentTeacher={currentTeacher}
-        bookingToEdit={editingBooking}
-      />
+      {isBookingModalOpen && ( // Conditionally render modal to ensure currentTeacher is available
+        <BookingModal
+          isOpen={isBookingModalOpen}
+          onOpenChange={handleModalOpenChange}
+          currentTeacher={currentTeacher}
+          bookingToEdit={editingBooking}
+        />
+      )}
     </div>
   );
 }
