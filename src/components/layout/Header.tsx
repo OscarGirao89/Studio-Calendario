@@ -8,13 +8,15 @@ import type { Teacher } from '@/lib/types';
 import { PlusCircle, LogOut } from 'lucide-react';
 
 interface HeaderProps {
-  loggedInUser: Teacher; // Changed from currentTeacher
-  onLogout: () => void;   // Added for logout
+  loggedInUser: Teacher | null; // Can be null if guest
+  isGuest: boolean;
+  onLogout: () => void;
   onNewBooking: () => void;
 }
 
 export function Header({
   loggedInUser,
+  isGuest,
   onLogout,
   onNewBooking,
 }: HeaderProps) {
@@ -26,16 +28,24 @@ export function Header({
       </div>
       <div className="flex flex-col sm:flex-row items-center space-y-2 sm:space-y-0 sm:space-x-4">
         <div className="flex items-center space-x-2">
-          <span className="text-sm text-foreground">Usuario:</span>
-          <span className="text-sm font-semibold text-accent">{loggedInUser}</span>
+          {isGuest ? (
+            <span className="text-sm text-accent font-semibold">Viendo como Invitado</span>
+          ) : loggedInUser ? (
+            <>
+              <span className="text-sm text-foreground">Usuario:</span>
+              <span className="text-sm font-semibold text-accent">{loggedInUser}</span>
+            </>
+          ) : null}
         </div>
-        <Button onClick={onNewBooking} size="sm" variant="outline">
-          <PlusCircle className="mr-2 h-4 w-4" />
-          Nueva Reserva
-        </Button>
+        {!isGuest && loggedInUser && (
+          <Button onClick={onNewBooking} size="sm" variant="outline">
+            <PlusCircle className="mr-2 h-4 w-4" />
+            Nueva Reserva
+          </Button>
+        )}
         <Button onClick={onLogout} size="sm" variant="ghost">
           <LogOut className="mr-2 h-4 w-4" />
-          Cerrar Sesión
+          {isGuest ? 'Salir del Modo Invitado' : 'Cerrar Sesión'}
         </Button>
       </div>
     </header>

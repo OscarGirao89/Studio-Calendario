@@ -28,9 +28,10 @@ import { useToast } from "@/hooks/use-toast";
 interface WeeklyCalendarProps {
   initialDate?: Date;
   bookingsLastUpdatedAt: number;
-  currentTeacher: Teacher;
+  currentTeacher: Teacher | null; // Can be null if guest
   onBookingUpdated: () => void;
   onEditBookingRequested: (booking: Booking) => void;
+  isGuestView?: boolean; // To explicitly know it's guest view
 }
 
 export function WeeklyCalendar({ 
@@ -38,7 +39,8 @@ export function WeeklyCalendar({
   bookingsLastUpdatedAt, 
   currentTeacher, 
   onBookingUpdated,
-  onEditBookingRequested 
+  onEditBookingRequested,
+  isGuestView = false,
 }: WeeklyCalendarProps) {
   const [currentDate, setCurrentDate] = useState(initialDate);
   const [weekBookings, setWeekBookings] = useState<Booking[]>([]);
@@ -104,11 +106,17 @@ export function WeeklyCalendar({
   };
 
   const handleRequestDelete = (booking: Booking) => {
+    if (isGuestView) return;
     setBookingToDelete(booking);
   };
 
+  const handleRequestEdit = (booking: Booking) => {
+    if (isGuestView) return;
+    onEditBookingRequested(booking);
+  }
+
   const handleConfirmDelete = async () => {
-    if (!bookingToDelete) return;
+    if (!bookingToDelete || isGuestView) return;
     const result = await deleteBookingAction(bookingToDelete.id);
     if (result.success) {
       toast({ title: "Reserva Eliminada", description: `La clase "${bookingToDelete.className}" ha sido eliminada.` });
@@ -189,7 +197,8 @@ export function WeeklyCalendar({
                             booking={booking} 
                             currentTeacher={currentTeacher}
                             onRequestDelete={handleRequestDelete}
-                            onRequestEdit={onEditBookingRequested}
+                            onRequestEdit={handleRequestEdit}
+                            isGuestView={isGuestView}
                           />
                         </div>
                       );
@@ -200,7 +209,7 @@ export function WeeklyCalendar({
           </React.Fragment>
         ))}
       </div>
-      {bookingToDelete && (
+      {!isGuestView && bookingToDelete && (
         <AlertDialog open={!!bookingToDelete} onOpenChange={(open) => !open && setBookingToDelete(null)}>
           <AlertDialogContent>
             <AlertDialogHeader>

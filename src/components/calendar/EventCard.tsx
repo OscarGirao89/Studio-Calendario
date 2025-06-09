@@ -6,29 +6,30 @@ import { Trash2, Edit3 } from 'lucide-react';
 
 interface EventCardProps {
   booking: Booking;
-  currentTeacher: Teacher;
+  currentTeacher: Teacher | null; // Can be null for guest view
   onRequestDelete: (booking: Booking) => void;
   onRequestEdit: (booking: Booking) => void;
   onClick?: () => void; 
+  isGuestView?: boolean;
 }
 
-export function EventCard({ booking, currentTeacher, onRequestDelete, onRequestEdit, onClick }: EventCardProps) {
+export function EventCard({ booking, currentTeacher, onRequestDelete, onRequestEdit, onClick, isGuestView = false }: EventCardProps) {
   const cardStyle = {
     backgroundColor: booking.color,
     opacity: booking.type === 'single' ? 0.9 : 1,
   };
 
-  const canModify = currentTeacher === booking.createdBy;
+  const canModify = !isGuestView && currentTeacher === booking.createdBy;
 
   return (
     <div
       className={cn(
         "p-2 rounded-md text-xs text-primary-foreground shadow-md overflow-hidden h-full flex flex-col justify-between group",
         booking.type === 'recurring' && "recurring-event-stripes",
-        canModify || onClick ? "cursor-pointer" : "cursor-default" 
+        canModify || (onClick && !isGuestView) ? "cursor-pointer" : "cursor-default" 
       )}
       style={cardStyle}
-      onClick={!canModify && onClick ? onClick : undefined}
+      onClick={!canModify && onClick && !isGuestView ? onClick : undefined}
       title={`${booking.className} (${booking.teacher}) - ${booking.startTime} a ${booking.endTime}`}
     >
       <div className="flex-grow">
@@ -63,4 +64,3 @@ export function EventCard({ booking, currentTeacher, onRequestDelete, onRequestE
     </div>
   );
 }
-
