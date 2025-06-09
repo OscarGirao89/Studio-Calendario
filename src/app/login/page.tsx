@@ -1,7 +1,7 @@
 
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -9,10 +9,12 @@ import { Label } from '@/components/ui/label';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { LogoIcon } from '@/components/icons/LogoIcon';
 import { useToast } from "@/hooks/use-toast";
-import { TEACHERS } from '@/lib/constants'; 
+import { TEACHERS } from '@/lib/constants';
 
-// Simulated passwords (for prototype only - NOT SECURE)
-const userCredentials: Record<string, string> = {
+const USER_CREDENTIALS_KEY = 'userAppCredentials';
+
+// Default credentials if not found in localStorage
+const defaultUserCredentials: Record<string, string> = {
   oski: 'oski123',
   flor: 'flor123',
   joa: 'joa123',
@@ -22,8 +24,21 @@ export default function LoginPage() {
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
   const [isLoading, setIsLoading] = useState(false);
+  const [userCredentials, setUserCredentials] = useState<Record<string, string>>({});
   const router = useRouter();
   const { toast } = useToast();
+
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      const storedCredentials = localStorage.getItem(USER_CREDENTIALS_KEY);
+      if (storedCredentials) {
+        setUserCredentials(JSON.parse(storedCredentials));
+      } else {
+        localStorage.setItem(USER_CREDENTIALS_KEY, JSON.stringify(defaultUserCredentials));
+        setUserCredentials(defaultUserCredentials);
+      }
+    }
+  }, []);
 
   const handleLoginSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -81,7 +96,7 @@ export default function LoginPage() {
                 type="password"
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
-                placeholder="Contraseña (ej. oski123)"
+                placeholder="Contraseña"
                 required
                 className="text-base"
               />
@@ -97,7 +112,7 @@ export default function LoginPage() {
           </div>
         </CardContent>
         <CardFooter className="text-center text-xs text-muted-foreground">
-          <p>Este es un sistema de prototipo. Las contraseñas son simuladas.</p>
+          <p>Este es un sistema de prototipo. Las contraseñas son simuladas y se guardan localmente.</p>
         </CardFooter>
       </Card>
     </div>
