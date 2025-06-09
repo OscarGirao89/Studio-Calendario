@@ -14,6 +14,12 @@ import { Label } from '@/components/ui/label';
 import { Button } from '@/components/ui/button';
 import { useToast } from '@/hooks/use-toast';
 import { KeyRound } from 'lucide-react';
+import {
+  Accordion,
+  AccordionContent,
+  AccordionItem,
+  AccordionTrigger,
+} from "@/components/ui/accordion";
 
 const USER_CREDENTIALS_KEY = 'userAppCredentials';
 
@@ -112,8 +118,6 @@ export default function FusionSchedulePage() {
     );
   }
   
-  // Further check to ensure currentTeacher/isGuest is set before rendering main content
-  // This handles the case where localStorage has a user, but state hasn't updated yet
   if (!isGuest && !currentTeacher && typeof window !== 'undefined' && localStorage.getItem('loggedInUser') !== 'GuestUser' && localStorage.getItem('loggedInUser') !== null) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-background">
@@ -148,40 +152,50 @@ export default function FusionSchedulePage() {
         {!isGuest && currentTeacher && (
           <div className="p-4 md:p-6 mt-8">
             <Card className="shadow-lg max-w-md mx-auto">
-              <CardHeader>
-                <CardTitle className="text-xl md:text-2xl font-headline flex items-center">
-                  <KeyRound className="mr-3 h-6 w-6 text-primary" />
-                  Cambiar Contraseña
-                </CardTitle>
-                <CardDescription>Actualiza tu contraseña de acceso al sistema.</CardDescription>
-              </CardHeader>
-              <CardContent>
-                <form onSubmit={handlePasswordChange} className="space-y-4">
-                  <div>
-                    <Label htmlFor="newPassword">Nueva Contraseña</Label>
-                    <Input 
-                      id="newPassword" 
-                      type="password" 
-                      value={newPassword}
-                      onChange={(e) => setNewPassword(e.target.value)}
-                      required 
-                    />
-                  </div>
-                  <div>
-                    <Label htmlFor="confirmPassword">Confirmar Nueva Contraseña</Label>
-                    <Input 
-                      id="confirmPassword" 
-                      type="password" 
-                      value={confirmPassword}
-                      onChange={(e) => setConfirmPassword(e.target.value)}
-                      required 
-                    />
-                  </div>
-                  <Button type="submit" className="w-full" disabled={isPasswordSaving}>
-                    {isPasswordSaving ? 'Guardando...' : 'Guardar Contraseña'}
-                  </Button>
-                </form>
-              </CardContent>
+              <Accordion type="single" collapsible className="w-full">
+                <AccordionItem value="item-1">
+                  <AccordionTrigger className="p-6">
+                    <div className="flex items-center">
+                      <KeyRound className="mr-3 h-6 w-6 text-primary" />
+                      <CardTitle className="text-xl md:text-2xl font-headline">
+                        Cambiar Contraseña
+                      </CardTitle>
+                    </div>
+                  </AccordionTrigger>
+                  <AccordionContent>
+                    <CardDescription className="px-6 pb-4 -mt-3">
+                      Actualiza tu contraseña de acceso al sistema.
+                    </CardDescription>
+                    <CardContent>
+                      <form onSubmit={handlePasswordChange} className="space-y-4">
+                        <div>
+                          <Label htmlFor="newPassword">Nueva Contraseña</Label>
+                          <Input 
+                            id="newPassword" 
+                            type="password" 
+                            value={newPassword}
+                            onChange={(e) => setNewPassword(e.target.value)}
+                            required 
+                          />
+                        </div>
+                        <div>
+                          <Label htmlFor="confirmPassword">Confirmar Nueva Contraseña</Label>
+                          <Input 
+                            id="confirmPassword" 
+                            type="password" 
+                            value={confirmPassword}
+                            onChange={(e) => setConfirmPassword(e.target.value)}
+                            required 
+                          />
+                        </div>
+                        <Button type="submit" className="w-full" disabled={isPasswordSaving}>
+                          {isPasswordSaving ? 'Guardando...' : 'Guardar Contraseña'}
+                        </Button>
+                      </form>
+                    </CardContent>
+                  </AccordionContent>
+                </AccordionItem>
+              </Accordion>
             </Card>
           </div>
         )}
